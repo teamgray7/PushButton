@@ -125,6 +125,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    @Override
+    protected void onDestroy() {
+        // Release wakelock
+        wl.release();
+        // Close listening socket
+        thread.disconnect();
+        // Wait thread to end.
+        try {
+            thread.join();
+        }
+        catch (InterruptedException ie) {
+            Log.d(TAG, "Joining thread interrupted.");
+        }
+        Log.d(TAG, "State cleaned.");
+        super.onDestroy();
+    }
 }
 
 class CommunicationThread extends Thread {
@@ -153,15 +170,26 @@ class CommunicationThread extends Thread {
     }
 
     public void disconnect() {
-        if (srvSck != null) {
-            try {
-                srvSck.close();
-            } catch (IOException ioe) {
-                Log.d(TAG, "Close() failed.");
-            }
-            srvSck = null;
-        }
         running = false;
+
+        try {
+            srvSck.close();
+        } catch (IOException ioe) {
+            Log.d(TAG, "Close() failed.");
+        }
+        catch (NullPointerException npe) {
+            Log.d(TAG, "No listening socket to close().");
+        }
+
+        try {
+            sck.close();
+        }
+        catch (IOException ioe) {
+            Log.d(TAG, "comm-socket close() failed.");
+        }
+        catch (NullPointerException npe) {
+            Log.d(TAG, "No comm-socked to close().");
+        }
     }
 
     public void write(int value) {
